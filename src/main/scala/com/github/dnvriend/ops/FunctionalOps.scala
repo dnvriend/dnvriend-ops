@@ -14,7 +14,7 @@
 
 package com.github.dnvriend.ops
 
-import com.github.dnvriend.ops.DisjunctionNel.DisjunctionNel
+import com.github.dnvriend.ops.DisjunctionNel.{ DisjunctionNel, Nel }
 
 import scala.util.Try
 import scalaz._
@@ -31,14 +31,24 @@ object DisjunctionNel {
     case scala.util.Success(a) => \/-(a)
     case scala.util.Failure(t) => -\/(t)
   }
-
-  def fromTryNel[A](that: Try[A]): DisjunctionNel[Throwable, A] = {
-    fromTry(that).leftMap(_.wrapNel)
-  }
 }
 
-trait FunctionalOps {
+trait FunctionalOps extends OutputStreamOps {
   implicit def ToFunctionalOpsImpl[A](that: => A) = new FunctionalOpsImpl(that)
+
+  def fromTryNel[A](that: Try[A]): DisjunctionNel[Throwable, A] = {
+    DisjunctionNel.fromTry(that).leftMap(_.wrapNel)
+  }
+
+  implicit val throwableShow: Show[Throwable] = Show.shows[Throwable](t => {
+    withPrintWriter(pw => t.printStackTrace(pw))
+  })
+
+  implicit def nelShow[A](nel: Nel[A])(implicit ashow: Show[A], s: Semigroup[String]) = Show.shows[Nel[A]](nel => nel.map(ashow.shows).intercalate(","))
+
+  implicit def disShow[A, B](x: Disjunction[A, B])(implicit ashow: Show[A], bshow: Show[B]) = Show.shows[Disjunction[A, B]](dis => dis.fold(a => ashow.shows(a), b => bshow.shows(b)))
+
+  implicit def disShowNel[A, B](x: DisjunctionNel[A, B])(implicit ashow: Show[Nel[A]], bshow: Show[B]) = Show.shows[DisjunctionNel[A, B]](dis => dis.fold(a => ashow.shows(a), b => bshow.shows(b)))
 }
 
 class FunctionalOpsImpl[A](that: => A) {

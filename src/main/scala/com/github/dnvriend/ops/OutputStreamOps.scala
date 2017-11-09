@@ -14,17 +14,24 @@
 
 package com.github.dnvriend.ops
 
-import java.io.OutputStream
+import java.io.{ OutputStream, PrintWriter, StringWriter }
 
-import play.api.libs.json.{ Json, Writes }
+object OutputStreamOps extends OutputStreamOps
 
 trait OutputStreamOps {
-  def toOutputStreamOps[A <: Product: Writes](that: A) = new OutputStreamOpsImpl(that)
+  implicit def ToOutputStreamOps(that: OutputStream): ToOutputStreamOps = new ToOutputStreamOps(that)
+
+  def withStringWriter(f: StringWriter => Unit): String = {
+    val sw = new StringWriter()
+    try f(sw) finally { sw.flush; sw.close() }
+    sw.toString
+  }
+
+  def withPrintWriter(f: PrintWriter => Unit): String = withStringWriter { sw =>
+    val pw = new PrintWriter(sw)
+    try f(pw) finally { pw.flush(); pw.close() }
+  }
 }
 
-class OutputStreamOpsImpl[A <: Product: Writes](that: A) extends StringOps {
-  def write(os: OutputStream): Unit = {
-    os.write(Json.toJson(that).toString().toUtf8Array)
-    os.close()
-  }
+class ToOutputStreamOps(that: OutputStream) {
 }

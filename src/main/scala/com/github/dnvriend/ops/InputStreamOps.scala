@@ -24,4 +24,5 @@ class InputStreamOpsImpl(that: InputStream) {
   def toByteArray: Array[Byte] = {
     Stream.continually(that.read()).takeWhile(_ != -1).map(_.toByte).toArray
   }
+
 }
