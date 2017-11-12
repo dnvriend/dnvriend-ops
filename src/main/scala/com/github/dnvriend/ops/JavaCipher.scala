@@ -14,16 +14,21 @@
 
 package com.github.dnvriend.ops
 
-object AllOps extends AllOps
+import scalaz.Show
 
-trait AllOps extends AvroOps
-  with ByteArrayOps
-  with ByteBufferOps
-  with FileOps
-  with FunctionalOps
-  with HttpOps
-  with InputStreamOps
-  with JsonOps
-  with OutputStreamOps
-  with StringOps
-  with CryptoOps
+/**
+ * see: https://docs.oracle.com/javase/8/docs/api/javax/crypto/Cipher.html
+ */
+object JavaCipher {
+  implicit val transformation: Show[JavaCipher] = Show.shows(cipher => {
+    def getTransformation(algorithm: String, mode: String, padding: String, keySize: Int): String = {
+      s"$algorithm/$mode/$padding"
+    }
+    cipher match {
+      case AES_ECB_PKCS5_Padding_128 => getTransformation("AES", "ECB", "PKCS5Padding", 128)
+    }
+  })
+
+}
+sealed trait JavaCipher
+case object AES_ECB_PKCS5_Padding_128 extends JavaCipher

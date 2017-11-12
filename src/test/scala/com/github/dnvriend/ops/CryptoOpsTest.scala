@@ -14,16 +14,18 @@
 
 package com.github.dnvriend.ops
 
-object AllOps extends AllOps
+import com.github.dnvriend.TestSpec
 
-trait AllOps extends AvroOps
-  with ByteArrayOps
-  with ByteBufferOps
-  with FileOps
-  with FunctionalOps
-  with HttpOps
-  with InputStreamOps
-  with JsonOps
-  with OutputStreamOps
-  with StringOps
-  with CryptoOps
+class CryptoOpsTest extends TestSpec {
+  final val KEY = "THIS_IS_A_SECRET"
+  final val SALT = "THIS_IS_A_SALT"
+  final val AES_CIPHER_TEXT = "08F848EBF55C1F6236EDBFAEEC9C8F24"
+  final val PLAIN_TEXT = "Hello World!"
+  "symmetric" should "encrypt aes" in {
+    PLAIN_TEXT.arr.encrypt.symmetric.aes(KEY, SALT).hex shouldBe AES_CIPHER_TEXT
+  }
+
+  it should "decrypt aes" in {
+    AES_CIPHER_TEXT.fromHex.decrypt.symmetric.aes(KEY, SALT).str shouldBe PLAIN_TEXT
+  }
+}
