@@ -19,12 +19,14 @@ import java.nio.ByteBuffer
 
 import play.api.libs.json.{ JsValue, Json }
 
-import scala.language.implicitConversions
+import scalaz.{ @@, Tag }
 
-object ByteArrayOps extends ByteArrayOps
+object ByteArrayOps extends ByteArrayOps {
+  def apply(that: Array[Byte]): ToByteArrayOps = new ToByteArrayOps(that)
+}
 
 trait ByteArrayOps {
-  implicit def toByteArrayOps(that: Array[Byte]): ByteArrayOpsImpl = new ByteArrayOpsImpl(that)
+  implicit def ToByteArrayOps(that: Array[Byte]): ToByteArrayOps = ByteArrayOps(that)
 
   def withOutputStream(f: OutputStream => Unit): Array[Byte] = {
     val baos = new ByteArrayOutputStream()
@@ -34,10 +36,7 @@ trait ByteArrayOps {
   }
 }
 
-class ByteArrayOpsImpl(that: Array[Byte]) {
-  def hex: String = {
-    javax.xml.bind.DatatypeConverter.printHexBinary(that)
-  }
+class ToByteArrayOps(that: Array[Byte]) {
   def compress: Array[Byte] = {
     val bos = new java.io.ByteArrayOutputStream(that.length)
     val gzip = new java.util.zip.GZIPOutputStream(bos)
@@ -69,21 +68,25 @@ class ByteArrayOpsImpl(that: Array[Byte]) {
     toUtf8String
   }
 
-  def base64: String = {
-    java.util.Base64.getEncoder.encodeToString(that)
+  def base64: String @@ Base64 = {
+    Tag(java.util.Base64.getEncoder.encodeToString(that))
   }
 
-  def md5: String = {
+  def hex: String @@ Hex = {
+    Tag(javax.xml.bind.DatatypeConverter.printHexBinary(that))
+  }
+
+  def md5: String @@ Hex = {
     import ByteArrayOps._
     java.security.MessageDigest.getInstance("MD5").digest(that).hex
   }
 
-  def sha1: String = {
+  def sha1: String @@ Hex = {
     import ByteArrayOps._
     java.security.MessageDigest.getInstance("SHA-1").digest(that).hex
   }
 
-  def sha256: String = {
+  def sha256: String @@ Hex = {
     import ByteArrayOps._
     java.security.MessageDigest.getInstance("SHA-256").digest(that).hex
   }

@@ -16,11 +16,14 @@ package com.github.dnvriend.ops
 
 import com.github.dnvriend.TestSpec
 
+import scalaz.@@
+
 class CryptoOpsTest extends TestSpec {
   final val KEY = "THIS_IS_A_SECRET"
   final val SALT = "THIS_IS_A_SALT"
-  final val AES_CIPHER_TEXT = "08F848EBF55C1F6236EDBFAEEC9C8F24"
+  final val AES_CIPHER_TEXT: String @@ Hex = "08F848EBF55C1F6236EDBFAEEC9C8F24".tagHex
   final val PLAIN_TEXT = "Hello World!"
+
   "symmetric" should "encrypt aes" in {
     PLAIN_TEXT.arr.encrypt.symmetric.aes(KEY, SALT).hex shouldBe AES_CIPHER_TEXT
   }

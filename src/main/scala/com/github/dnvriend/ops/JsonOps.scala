@@ -27,11 +27,6 @@ trait JsonOps {
 }
 
 class JsonOpsImpl(that: JsValue) extends StringOps {
-  def log: JsValue = {
-    println(that.toString())
-    that
-  }
-
   def resp: JsValue = {
     println(s"Response\n${Json.prettyPrint(that)}")
     that
@@ -49,7 +44,7 @@ class JsonOpsImpl(that: JsValue) extends StringOps {
     Json.prettyPrint(that)
   }
 
-  def bytes: Array[Byte] = {
+  def bytes: Array[Byte] @@ UTF8 = {
     that.toString.arr
   }
 
@@ -58,9 +53,10 @@ class JsonOpsImpl(that: JsValue) extends StringOps {
   }
 }
 
-class JsonToOutputStreamOps[A <: Product: Writes](that: A) extends StringOps {
+class JsonToOutputStreamOps[A <: Product: Writes](that: A) extends StringOps with ByteArrayOps with AnyOps {
   def write(os: OutputStream): Unit = {
-    os.write(Json.toJson(that).toString().toUtf8Array)
+    val utf8EncodedArray: Array[Byte] = Json.toJson(that).toString().toUtf8Array.unwrap
+    os.write(utf8EncodedArray)
     os.close()
   }
 }

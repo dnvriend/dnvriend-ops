@@ -27,3 +27,4 @@ trait AllOps extends AvroOps
   with OutputStreamOps
   with StringOps
   with CryptoOps
+  with AnyOps

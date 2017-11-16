@@ -19,7 +19,7 @@ import javax.crypto.spec.SecretKeySpec
 import java.security.MessageDigest
 import java.util
 
-import scalaz.Show
+import scalaz.{ @@, Show }
 
 object Crypto {
   def keyToSpec(key: String, salt: String): SecretKeySpec = {
@@ -45,8 +45,10 @@ object Crypto {
 
 object CryptoOps extends CryptoOps
 
-trait CryptoOps extends ByteArrayOps {
+trait CryptoOps extends ByteArrayOps with AnyOps {
   implicit def ToEncryptionOps(that: Array[Byte]): ToCryptoOps = new ToCryptoOps(that)
+  implicit def ToUtf8EncryptionOps(that: Array[Byte] @@ UTF8): ToCryptoOps = new ToCryptoOps(that.unwrap)
+  implicit def ToAvroJsonEncryptionOps(that: Array[Byte] @@ AvroJson): ToCryptoOps = new ToCryptoOps(that.unwrap)
 }
 
 class ToCryptoOps(that: Array[Byte]) {

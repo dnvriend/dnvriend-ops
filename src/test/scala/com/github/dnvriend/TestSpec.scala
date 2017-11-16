@@ -15,9 +15,27 @@
 package com.github.dnvriend
 
 import com.github.dnvriend.ops.AllOps
-import org.scalatest.{ FlatSpec, Matchers }
+import com.sksamuel.avro4s.SchemaFor
+import org.apache.avro.Schema
+import org.scalatest.{ FlatSpec, Matchers, TryValues }
 import org.typelevel.scalatest.{ DisjunctionMatchers, DisjunctionValues }
 
-class TestSpec extends FlatSpec with Matchers with DisjunctionValues with DisjunctionMatchers with AllOps {
+object v1 {
+  case class Person(name: String = "Dennis")
+  val personSchema: Schema = SchemaFor[Person]()
+  case class Cat(name: String = "Elsa")
+}
+
+object v2 {
+  case class Person(name: String = "Dennis", age: Int = 0)
+  val personSchema: Schema = SchemaFor[Person]()
+}
+
+object v3 {
+  case class Person(name: String = "Dennis", age: Int = 0, luckyNumbers: List[Int] = List.empty[Int])
+  val personSchema: Schema = SchemaFor[Person]()
+}
+
+class TestSpec extends FlatSpec with Matchers with DisjunctionValues with DisjunctionMatchers with TryValues with AllOps {
 
 }

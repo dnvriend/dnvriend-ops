@@ -14,40 +14,52 @@
 
 package com.github.dnvriend.ops
 
-import java.io.{ ByteArrayOutputStream, OutputStream }
-
 import com.sksamuel.avro4s._
 import org.apache.avro.SchemaCompatibility.SchemaCompatibilityType
 import org.apache.avro.file.SeekableByteArrayInput
 import org.apache.avro.{ Schema, SchemaCompatibility, SchemaNormalization, SchemaValidatorBuilder }
 
+import scala.util.Try
 import scalaz._
 import scalaz.Scalaz._
 
 object AvroOps extends AvroOps
 
 trait AvroOps {
-  implicit def toAvroSerializeOpsImpl[A <: Product: SchemaFor: ToRecord](a: A): AvroSerializeOpsImpl[A] = new AvroSerializeOpsImpl(a)
-  implicit def toAvroDeserializeOpsImpl[A <: Product](bytes: Array[Byte]): AvroDeSerializeOpsImpl = new AvroDeSerializeOpsImpl(bytes)
-  implicit def toAvroDeserializeStringOpsImpl(that: String): AvroDeSerializeStringOpsImpl = new AvroDeSerializeStringOpsImpl(that)
-  implicit def toAvroSchemaOps(that: Schema): AvroSchemaOpsImpl = new AvroSchemaOpsImpl(that)
-  implicit def toAvroStringOps(that: String): AvroStringOpsImpl = new AvroStringOpsImpl(that)
+  implicit def ToAvroSerializeOps[A <: Product: SchemaFor: ToRecord](that: A): ToAvroSerializeOps[A] = new ToAvroSerializeOps(that)
+  implicit def ToAvroDeserializeOps[A <: Product](that: Array[Byte] @@ AvroBinary): ToAvroDeSerializeOps = new ToAvroDeSerializeOps(that)
+  implicit def ToAvroDeserializeStringOps(that: String): ToAvroDeSerializeStringOps = new ToAvroDeSerializeStringOps(that)
+  implicit def ToAvroSchemaOps(that: Schema): ToAvroSchemaOps = new ToAvroSchemaOps(that)
+  implicit def ToAvroStringOps(that: String): ToAvroStringOps = new ToAvroStringOps(that)
+  implicit def ToAvroBase64StringOps(that: String @@ Base64): ToAvroBase64StringOps = new ToAvroBase64StringOps(that)
+  implicit def ToAvroHexStringOps(that: String @@ Hex): ToAvroHexStringOps = new ToAvroHexStringOps(that)
+  implicit def ToAvroBinaryUnwrapOps(that: Array[Byte] @@ AvroBinary): ToAvroBinaryUnwrapOps = new ToAvroBinaryUnwrapOps(that)
+  implicit def ToAvroJsonUnwrapOps(that: Array[Byte] @@ AvroJson): ToAvroJsonUnwrapOps = new ToAvroJsonUnwrapOps(that)
+  implicit def ToAvroTagOps(that: Array[Byte]): ToAvroTagOps = new ToAvroTagOps(that)
 
+  /**
+   * Returns a SHA-256 fingerprint for the schema generated from the product type
+   */
   def fingerPrintFor[A <: Product](implicit schemaFor: SchemaFor[A]): Array[Byte] = {
     SchemaNormalization.parsingFingerprint("SHA-256", schemaFor())
   }
 
+  /**
+   * Returns the [[org.apache.avro.Schema]] for the given product type
+   */
   def schemaFor[A <: Product](implicit schemaFor: SchemaFor[A]): Schema = schemaFor()
 
-  def checkCanReadWith[R <: Product, W <: Product](implicit readerSchema: SchemaFor[R], writerSchema: SchemaFor[W]): Disjunction[Throwable, Schema] = {
-    val result: SchemaCompatibility.SchemaPairCompatibility = SchemaCompatibility.checkReaderWriterCompatibility(readerSchema(), writerSchema())
-    result.getType match {
-      case SchemaCompatibilityType.COMPATIBLE   => DRight(readerSchema())
-      case SchemaCompatibilityType.INCOMPATIBLE => DLeft(new Error(result.getDescription))
-      case _                                    => DLeft(new Error("Unknown status: " + result.getType))
-    }
+  /**
+   * Checks whether the product types are full compatible
+   */
+  def checkCanReadWith[R <: Product, W <: Product](implicit readerSchema: SchemaFor[R], writerSchema: SchemaFor[W]): Validation[Throwable, Schema] = {
+    val result = SchemaCompatibility.checkReaderWriterCompatibility(readerSchema(), writerSchema())
+    Validation.lift(readerSchema())(_ => result.getType != SchemaCompatibilityType.COMPATIBLE, new Error(result.getDescription))
   }
 
+  /**
+   *
+   */
   def checkFullCompatibility[R <: Product](existingSchemas: Schema*)(implicit readerSchema: SchemaFor[R]): Disjunction[Throwable, Schema] = Disjunction.fromTryCatchNonFatal {
     import scala.collection.JavaConverters._
     new SchemaValidatorBuilder()
@@ -59,55 +71,46 @@ trait AvroOps {
   }
 }
 
-class AvroSerializeOpsImpl[A <: Product: SchemaFor: ToRecord](data: A) {
-  private def withOutputStream(f: OutputStream => Unit): Array[Byte] = {
-    val baos = new ByteArrayOutputStream
-    f(baos)
-    baos.toByteArray
+class ToAvroSerializeOps[A <: Product: ToRecord](that: A)(implicit schemaForA: SchemaFor[A]) {
+  def toAvroBinary(implicit encoder: Converter[A, Array[Byte] @@ AvroBinary]): Array[Byte] @@ AvroBinary = {
+    encoder(that)
   }
 
-  def toAvroBinary: Array[Byte] = withOutputStream { os =>
-    val output = AvroOutputStream.binary[A](os)
-    output.write(data)
-    output.close()
+  def toAvroJson(implicit encoder: Converter[A, Array[Byte] @@ AvroJson]): Array[Byte] @@ AvroJson = {
+    encoder(that)
   }
 
-  def toAvroJson: Array[Byte] = withOutputStream { os =>
-    val output = AvroOutputStream.json[A](os)
-    output.write(data)
-    output.close()
-  }
-
-  def to[B <: Product: SchemaFor: FromRecord]: Disjunction[Throwable, B] = {
-    new AvroDeSerializeOpsImpl(toAvroBinary).parseAvroBinary[B, A]
+  def to[B <: Product: SchemaFor: FromRecord](implicit converter: Converter[A, Try[B]]): Disjunction[Throwable, B] = {
+    converter(that).toDisjunction
   }
 }
 
-class AvroDeSerializeStringOpsImpl(that: String) extends StringOps with AvroOps {
-  def parseAvroBinary[R <: Product: SchemaFor: FromRecord, W <: Product: SchemaFor]: Disjunction[Throwable, R] = {
-    that.parseHex.parseAvroBinary[R, W]
-  }
-
-  def parseAvroBinary[R <: Product: SchemaFor: FromRecord](writerSchema: Schema): Disjunction[Throwable, R] = {
-    that.parseHex.parseAvroBinary[R](writerSchema)
-  }
-
-  def parseAvroJson[R <: Product: SchemaFor: FromRecord, W <: Product: SchemaFor]: Disjunction[Throwable, R] = {
-    that.parseHex.parseAvroJson[R, W]
-  }
-
-  def parseAvroJson[R <: Product: FromRecord: SchemaFor](writerSchema: Schema): Disjunction[Throwable, R] = {
-    that.parseHex.parseAvroJson[R](writerSchema)
-  }
+class ToAvroDeSerializeStringOps(that: String) extends StringOps with AvroOps {
+  //  def parseAvroBinary[R <: Product: SchemaFor: FromRecord, W <: Product: SchemaFor]: Disjunction[Throwable, R] = {
+  //    that.parseHex.parseAvroBinary[R, W]
+  //  }
+  //
+  //  def parseAvroBinary[R <: Product: SchemaFor: FromRecord](writerSchema: Schema): Disjunction[Throwable, R] = {
+  //    that.parseHex.parseAvroBinary[R](writerSchema)
+  //  }
+  //
+  //  def parseAvroJson[R <: Product: SchemaFor: FromRecord, W <: Product: SchemaFor]: Disjunction[Throwable, R] = {
+  //    that.parseHex.parseAvroJson[R, W]
+  //  }
+  //
+  //  def parseAvroJson[R <: Product: FromRecord: SchemaFor](writerSchema: Schema): Disjunction[Throwable, R] = {
+  //    that.parseHex.parseAvroJson[R](writerSchema)
+  //  }
 }
 
-class AvroDeSerializeOpsImpl(bytes: Array[Byte]) {
-  def parseAvroBinary[R <: Product: SchemaFor: FromRecord, W <: Product](implicit writerSchemaFor: SchemaFor[W]): Disjunction[Throwable, R] = {
-    parseAvroBinary[R](writerSchemaFor())
+class ToAvroDeSerializeOps(bytes: Array[Byte] @@ AvroBinary) {
+  def parseAvro[R <: Product: SchemaFor: FromRecord, W <: Product](implicit writerSchemaFor: SchemaFor[W]): Disjunction[Throwable, R] = {
+    //    parseAvro[R](writerSchemaFor())
+    ???
   }
 
-  def parseAvroBinary[R <: Product: FromRecord](writerSchema: Schema)(implicit readerSchemaFor: SchemaFor[R]): Disjunction[Throwable, R] = {
-    new AvroBinaryInputStream[R](new SeekableByteArrayInput(bytes), Option(writerSchema), Option(readerSchemaFor())).tryIterator().next().toDisjunction
+  def parseAvro[R <: Product: FromRecord: SchemaFor](writerSchema: Schema)(decoder: Converter2[Schema, Array[Byte] @@ AvroBinary, Try[R]]): Disjunction[Throwable, R] = {
+    decoder(writerSchema, bytes).toDisjunction
   }
 
   def parseAvroJson[R <: Product: SchemaFor: FromRecord, W <: Product](implicit writerSchemaFor: SchemaFor[W]): Disjunction[Throwable, R] = {
@@ -115,27 +118,43 @@ class AvroDeSerializeOpsImpl(bytes: Array[Byte]) {
   }
 
   def parseAvroJson[R <: Product: FromRecord](writerSchema: Schema)(implicit readerSchemaFor: SchemaFor[R]): Disjunction[Throwable, R] = {
-    AvroJsonInputStream[R](new SeekableByteArrayInput(bytes), Option(writerSchema), Option(readerSchemaFor())).tryIterator().next().toDisjunction
+    AvroJsonInputStream[R](new SeekableByteArrayInput(Tag.unwrap(bytes)), Option(writerSchema), Option(readerSchemaFor())).tryIterator().next().toDisjunction
   }
 }
 
-class AvroStringOpsImpl(that: String) extends StringOps with ByteArrayOps {
+class ToAvroStringOps(that: String) {
   def parseAvroSchemaFromString: Schema = {
     new Schema.Parser().parse(that)
   }
-  def parseAvroSchemaFromHex: Schema = {
-    new Schema.Parser().parse(that.parseHex.toInputStream)
-  }
+}
+class ToAvroBase64StringOps(that: String @@ Base64) extends StringOps with ByteArrayOps {
   def parseAvroSchemaFromBase64: Schema = {
     new Schema.Parser().parse(that.parseBase64.toInputStream)
   }
 }
 
-class AvroSchemaOpsImpl(that: Schema) extends StringOps {
-  def fingerprint: Array[Byte] = {
-    SchemaNormalization.parsingFingerprint("SHA-256", that)
+class ToAvroHexStringOps(that: String @@ Hex) extends StringOps with ByteArrayOps {
+  def parseAvroSchemaFromHex: Schema = {
+    new Schema.Parser().parse(that.parseHex.toInputStream)
   }
-  def toUtf8Array: Array[Byte] = {
+}
+
+class ToAvroSchemaOps(that: Schema) extends StringOps {
+  def fingerprint: Array[Byte] @@ SHA256 = {
+    Tag(SchemaNormalization.parsingFingerprint("SHA-256", that))
+  }
+  def toUtf8Array: Array[Byte] @@ UTF8 = {
     that.toString(false).toUtf8Array
   }
+}
+
+class ToAvroBinaryUnwrapOps(that: Array[Byte] @@ AvroBinary) {
+  def unwrap: Array[Byte] = Tag.unwrap(that)
+}
+class ToAvroJsonUnwrapOps(that: Array[Byte] @@ AvroJson) {
+  def unwrap: Array[Byte] = Tag.unwrap(that)
+}
+class ToAvroTagOps(that: Array[Byte]) {
+  def tagAvroBinary: Array[Byte] @@ AvroBinary = Tag(that)
+  def tagAvroJson: Array[Byte] @@ AvroJson = Tag(that)
 }
