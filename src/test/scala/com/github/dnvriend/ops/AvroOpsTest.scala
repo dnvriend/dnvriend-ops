@@ -43,4 +43,16 @@ class AvroOpsTest extends TestSpec with AllOps {
   it should "convert person v1 to cat v1" in {
     Converter[v1.Person, v1.Cat].apply(v1Person) shouldBe v1.Cat("Dennis")
   }
+
+  it should "fingerprints for different versions should be different" in {
+    fingerPrintFor[v1.Person].hex should not be fingerPrintFor[v2.Person].hex
+    fingerPrintFor[v2.Person].hex should not be fingerPrintFor[v3.Person].hex
+    fingerPrintFor[v1.Person].hex should not be fingerPrintFor[v3.Person].hex
+  }
+
+  it should "generate the same fingerprint for the same schema" in {
+    fingerPrintFor[v1.Person].hex shouldBe fingerPrintFor[v1.Person].hex
+    fingerPrintFor[v2.Person].hex shouldBe fingerPrintFor[v2.Person].hex
+    fingerPrintFor[v3.Person].hex shouldBe fingerPrintFor[v3.Person].hex
+  }
 }

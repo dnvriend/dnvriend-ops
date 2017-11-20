@@ -5,7 +5,6 @@ import java.io.{ ByteArrayInputStream, ByteArrayOutputStream }
 import com.sksamuel.avro4s._
 import org.apache.avro.Schema
 
-import scala.util.Try
 import scalaz.{ @@, Tag }
 
 object Converter {

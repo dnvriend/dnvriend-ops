@@ -15,23 +15,26 @@
 package com.github.dnvriend
 
 import com.github.dnvriend.ops.AllOps
-import com.sksamuel.avro4s.SchemaFor
+import com.sksamuel.avro4s.{ AvroNamespace, SchemaFor }
 import org.apache.avro.Schema
 import org.scalatest.{ FlatSpec, Matchers, TryValues }
 import org.typelevel.scalatest.{ DisjunctionMatchers, DisjunctionValues }
 
 object v1 {
+  @AvroNamespace("com.dnvriend.test")
   case class Person(name: String = "Dennis")
   val personSchema: Schema = SchemaFor[Person]()
   case class Cat(name: String = "Elsa")
 }
 
 object v2 {
+  @AvroNamespace("com.dnvriend.test")
   case class Person(name: String = "Dennis", age: Int = 0)
   val personSchema: Schema = SchemaFor[Person]()
 }
 
 object v3 {
+  @AvroNamespace("com.dnvriend.test")
   case class Person(name: String = "Dennis", age: Int = 0, luckyNumbers: List[Int] = List.empty[Int])
   val personSchema: Schema = SchemaFor[Person]()
 }
