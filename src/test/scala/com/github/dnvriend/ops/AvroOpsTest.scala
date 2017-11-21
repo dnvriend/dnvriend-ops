@@ -55,4 +55,12 @@ class AvroOpsTest extends TestSpec with AllOps {
     fingerPrintFor[v2.Person].hex shouldBe fingerPrintFor[v2.Person].hex
     fingerPrintFor[v3.Person].hex shouldBe fingerPrintFor[v3.Person].hex
   }
+
+  it should "generate a schema for optional fields" in {
+    Option(schemaFor[v1.PersonOptional]) shouldBe 'defined
+  }
+
+  it should "generate a schema for enum fields" in {
+    Option(schemaFor[v1.PersonWithEnums]) shouldBe 'defined
+  }
 }

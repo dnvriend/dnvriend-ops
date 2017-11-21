@@ -14,7 +14,7 @@
 
 package com.github.dnvriend
 
-import com.github.dnvriend.ops.AllOps
+import com.github.dnvriend.ops.{ AllOps, ClientType }
 import com.sksamuel.avro4s.{ AvroNamespace, SchemaFor }
 import org.apache.avro.Schema
 import org.scalatest.{ FlatSpec, Matchers, TryValues }
@@ -25,6 +25,12 @@ object v1 {
   case class Person(name: String = "Dennis")
   val personSchema: Schema = SchemaFor[Person]()
   case class Cat(name: String = "Elsa")
+
+  @AvroNamespace("com.dnvriend.test")
+  case class PersonOptional(name: Option[String] = Option.empty[String], age: Option[Int] = Option.empty[Int])
+
+  @AvroNamespace("com.dnvriend.test")
+  case class PersonWithEnums(name: String = "", age: Int = 0, clientType: ClientType = ClientType.STANDARD)
 }
 
 object v2 {
