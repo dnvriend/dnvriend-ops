@@ -16,6 +16,8 @@ package com.github.dnvriend.ops
 
 import java.io.{ OutputStream, PrintWriter, StringWriter }
 
+import play.api.libs.json.{ Json, Writes }
+
 object OutputStreamOps extends OutputStreamOps
 
 trait OutputStreamOps {
@@ -34,4 +36,15 @@ trait OutputStreamOps {
 }
 
 class ToOutputStreamOps(that: OutputStream) {
+  def write(str: String): OutputStream = {
+    that.write(str.getBytes("UTF-8"))
+    that
+  }
+  def write[A: Writes](a: A): OutputStream = {
+    write(Json.toJson(a).toString())
+  }
+  def close: OutputStream = {
+    that.close()
+    that
+  }
 }
