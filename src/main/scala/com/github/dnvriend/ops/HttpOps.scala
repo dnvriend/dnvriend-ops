@@ -21,6 +21,10 @@ object HttpOps extends HttpOps
 
 trait HttpOps extends ByteArrayOps {
   implicit def ToHttpOps(that: String): ToHttpOpsImpl = new ToHttpOpsImpl(that)
+  implicit def ToHttpStringContextOps(that: StringContext): ToHttpStringContextOps = new ToHttpStringContextOps(that)
+  implicit def ToHttpsStringContextOps(that: StringContext): ToHttpsStringContextOps = new ToHttpsStringContextOps(that)
+  implicit def ToHttpCommandOps(that: HttpCommand): ToHttpCommandOps = new ToHttpCommandOps(that)
+  implicit def ToHttpsCommandOps(that: HttpsCommand): ToHttpsCommandOps = new ToHttpsCommandOps(that)
 
   implicit val HttpResponseShow = Show.shows[HttpResponse](resp => {
     s"""============================================
@@ -66,4 +70,31 @@ class ToHttpOpsImpl(that: String) extends FunctionalOps {
       .asBytes
     HttpResponse(result.body, result.code, result.headers)
   }.safe
+}
+
+class ToHttpCommandOps(that: HttpCommand) extends ToHttpOpsImpl("http://" + that.url)
+case class HttpCommand(url: String)
+class ToHttpsCommandOps(that: HttpsCommand) extends ToHttpOpsImpl("https://" + that.url)
+case class HttpsCommand(url: String)
+
+/**
+ * val name = "James"
+ * s"Hello, $name"
+ *
+ * will be rewritten to:
+ *
+ * StringContext("Hello, ", "").s(name)
+ */
+class ToHttpStringContextOps(sc: StringContext) {
+  def http(args: Any*): HttpCommand = {
+    val str = sc.standardInterpolator(identity, args)
+    HttpCommand(str.replace("http://", ""))
+  }
+}
+
+class ToHttpsStringContextOps(sc: StringContext) {
+  def https(args: Any*): HttpsCommand = {
+    val str = sc.standardInterpolator(identity, args)
+    HttpsCommand(str.replace("https://", ""))
+  }
 }

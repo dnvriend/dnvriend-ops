@@ -6,14 +6,14 @@ version := "1.0.0-SNAPSHOT"
 
 scalaVersion := "2.12.4"
 
-libraryDependencies += "org.scalaz" %% "scalaz-core" % "7.2.16"
-libraryDependencies += "com.chuusai" %% "shapeless" % "2.3.2"
-libraryDependencies += "com.typesafe.play" %% "play-json" % "2.6.6"
-libraryDependencies += "com.sksamuel.avro4s" %% "avro4s-core" % "1.8.0"
-libraryDependencies += "org.scala-sbt" %% "io" % "1.0.2"
-libraryDependencies += "org.scalaj" %% "scalaj-http" % "2.3.0"
-libraryDependencies += "org.typelevel" %% "scalaz-scalatest" % "1.1.2" % Test
-libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.3" % Test
+libraryDependencies += "org.scalaz" %% "scalaz-core" % "7.2.+"
+libraryDependencies += "com.chuusai" %% "shapeless" % "2.3.+"
+libraryDependencies += "com.typesafe.play" %% "play-json" % "2.6.+"
+libraryDependencies += "com.sksamuel.avro4s" %% "avro4s-core" % "1.8.+"
+libraryDependencies += "org.scala-sbt" %% "io" % "1.1.+"
+libraryDependencies += "org.scalaj" %% "scalaj-http" % "2.3.+"
+libraryDependencies += "org.typelevel" %% "scalaz-scalatest" % "1.1.+" % Test
+libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.+" % Test
 
 // testing configuration
 fork in Test := true

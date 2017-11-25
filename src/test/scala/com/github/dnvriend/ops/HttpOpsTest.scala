@@ -28,4 +28,16 @@ class HttpOpsTest extends TestSpec {
   it should "not find an unknown host" in {
     "http://foo.bar".get() shouldBe left[Throwable]
   }
+
+  "https interpolation" should "get from httpbin.org" in {
+    https"httpbin.org/get".get() shouldBe right[HttpResponse]
+  }
+
+  it should "get from google" in {
+    https"www.google.nl".get() shouldBe right[HttpResponse]
+  }
+
+  it should "not find an unknown host" in {
+    https"foo.bar".get() shouldBe left[Throwable]
+  }
 }
